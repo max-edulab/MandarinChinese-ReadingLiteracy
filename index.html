@@ -310,20 +310,69 @@ body.zyon .sk b{font-size:18px}
   .rank{font-size:48px}
 }
 @media (prefers-reduced-motion:reduce){.float,.lvup,.scene.shake{animation:none}}
+/* ---------- 上方固定的兩個按鈕（每個遊戲都一樣）：⌂ 遊戲大廳＝回到所有遊戲的入口；圖示＋首頁＝回到這個遊戲的開頭 ---------- */
+.elnL{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.eln{display:flex;gap:6px;flex:none;align-items:center}
+.eln a,.eln button{display:inline-flex;align-items:center;gap:5px;margin:0;font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;font-size:15px;font-weight:900;line-height:1.2;padding:5px 10px;border:3px solid #0b0e22;border-radius:0;box-shadow:0 3px 0 #0b0e22;cursor:pointer;text-decoration:none;white-space:nowrap;letter-spacing:0;text-shadow:none;text-transform:none}
+.eln .hall{background:#1b1b2f;color:#fff;outline:2px solid #fcbc3c;outline-offset:-6px}
+.eln .home{background:#fffbe8;color:#1b1b2f}
+.eln a:hover{background:#2c2c4a}
+.eln button:hover{background:#fff3b0}
+.eln a:active,.eln button:active{transform:translateY(3px);box-shadow:none}
+.eln a:focus-visible,.eln button:focus-visible{outline:3px solid #3ce0ff;outline-offset:2px}
+.eln-logo{cursor:pointer}
+@media (max-width:560px){.eln .long{display:none}.eln a,.eln button{font-size:14px;padding:4px 8px}}
+/* 正在玩的時候按到，先問一下 */
+.elnask{position:fixed;inset:0;z-index:9999;background:rgba(5,8,25,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+.elnask .box{background:#fffbe8;color:#1b1b2f;border:4px solid #0b0e22;box-shadow:6px 6px 0 rgba(0,0,0,.4);padding:18px 20px;width:min(380px,100%);font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;font-size:18px;font-weight:700;line-height:1.6}
+.elnask .t{font-size:22px;font-weight:900}
+.elnask .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.elnask button{font-family:inherit;font-weight:900;font-size:18px;padding:8px 18px;border:3px solid #0b0e22;border-radius:0;box-shadow:0 4px 0 #0b0e22;cursor:pointer;color:#1b1b2f}
+.elnask .stay{background:#fcbc3c}
+.elnask .go{background:#fff}
+.elnask button:active{transform:translateY(3px);box-shadow:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <h1 class="logo"><span class="px">READ</span>閱讀素養</h1>
+    <div class="elnL"><nav class="eln" aria-label="回到哪裡"><a class="hall" id="elnHall" href="https://max-edulab.github.io/home/" title="回到所有遊戲的遊戲大廳">⌂ <span><span class="long">遊戲</span>大廳</span></a><button class="home" id="elnHome" type="button" title="回到這個遊戲的首頁">📚 首頁</button></nav><h1 class="logo" data-eln-logo><span class="px">READ</span>閱讀素養</h1></div>
     <div class="me" id="me"></div>
     <div class="btns">
-      <button class="chip" id="btnHome">🏠 主畫面</button>
       <button class="chip" id="btnRank">🏆 排行榜</button><button class="chip" id="btnWords">📒 生詞本</button><button class="chip" id="btnZy" aria-pressed="true" hidden>ㄅ 注音</button>
       <button class="chip" id="btnSnd" aria-pressed="true">🔊 音效</button>
       <button class="chip" id="btnHelp">❓ 說明</button>
     </div>
   </header>
+<script>
+// 上方兩個固定按鈕：⌂ 遊戲大廳、首頁（點遊戲名稱也會回首頁）
+// 遊戲裡要設定：EDULAB_NAV.home（回首頁要做的事）、busy（是不是正在玩一輪，正在玩就先問一下）、text（問的話，可以給有注音的版本）
+window.EDULAB_NAV = window.EDULAB_NAV || { home:null, busy:() => false, text:null };
+(() => {
+  const ask = go => {
+    let busy = false; try { busy = !!EDULAB_NAV.busy(); } catch (e) {}
+    if (!busy) return go();
+    let t = null; try { t = typeof EDULAB_NAV.text === 'function' ? EDULAB_NAV.text() : null; } catch (e) {}
+    t = t || { title:'這一輪還沒做完', sub:'確定要離開嗎？', stay:'繼續玩', go:'離開' };
+    const d = document.createElement('div'); d.className = 'elnask';
+    d.innerHTML = `<div class="box" role="dialog" aria-modal="true" aria-label="確定要離開嗎"><div class="t">${t.title}</div><div>${t.sub}</div><div class="row"><button class="stay" type="button">${t.stay}</button><button class="go" type="button">${t.go}</button></div></div>`;
+    document.body.appendChild(d);
+    const close = () => { d.remove(); removeEventListener('keydown', esc, true); };
+    const esc = e => { if (e.key === 'Escape'){ e.stopPropagation(); close(); } };
+    addEventListener('keydown', esc, true);
+    d.onclick = e => { if (e.target === d) close(); };
+    d.querySelector('.stay').onclick = close;
+    d.querySelector('.go').onclick = () => { close(); go(); };
+    d.querySelector('.stay').focus();
+  };
+  document.getElementById('elnHall').addEventListener('click', e => { e.preventDefault(); const u = e.currentTarget.href; ask(() => { location.href = u; }); });
+  const home = () => ask(() => { if (EDULAB_NAV.home) EDULAB_NAV.home(); });
+  document.getElementById('elnHome').addEventListener('click', home);
+  const logo = document.querySelector('[data-eln-logo]');
+  if (logo){ logo.classList.add('eln-logo'); logo.title = '回到這個遊戲的首頁'; logo.addEventListener('click', home); }
+})();
+</script>
+
   <main id="view"></main>
 </div>
 <div class="modal" id="modal" hidden></div>
@@ -985,7 +1034,7 @@ const ZY = {
 "電話響了": "ㄉㄧㄢˋ ㄏㄨㄚˋ ㄒㄧㄤˇ ˙ㄌㄜ",
 "媽媽問「要吃西瓜嗎？」，爸爸馬上說「我要！」": "ㄇㄚ ˙ㄇㄚ ㄨㄣˋ ㄧㄠˋ ㄔ ㄒㄧ ㄍㄨㄚ ˙ㄇㄚ ㄅㄚˋ ˙ㄅㄚ ㄇㄚˇ ㄕㄤˋ ㄕㄨㄛ ㄨㄛˇ ㄧㄠˋ",
 "這個故事好笑的地方是什麼？": "ㄓㄜˋ ˙ㄍㄜ ㄍㄨˋ ㄕˋ ㄏㄠˇ ㄒㄧㄠˋ ˙ㄉㄜ ㄉㄧˋ ˙ㄈㄤ ㄕˋ ㄕㄣˊ ˙ㄇㄜ",
-"怎麼叫都叫不醒的爸爸，一聽到西瓜就醒了": "ㄗㄣˇ ˙ㄇㄜ ㄐㄧㄠˋ ㄉㄡ ㄐㄧㄠˋ ㄅㄨˋ ㄒㄧㄥˇ ˙ㄉㄜ ㄅㄚˋ ˙ㄅㄚ ㄧ ㄊㄧㄥˋ ㄉㄠˋ ㄒㄧ ㄍㄨㄚ ㄐㄧㄡˋ ㄒㄧㄥˇ ˙ㄌㄜ",
+"怎麼叫都叫不醒的爸爸，一聽到西瓜就醒了": "ㄗㄣˇ ˙ㄇㄜ ㄐㄧㄠˋ ㄉㄡ ㄐㄧㄠˋ ㄅㄨˋ ㄒㄧㄥˇ ˙ㄉㄜ ㄅㄚˋ ˙ㄅㄚ ㄧ ㄊㄧㄥ ㄉㄠˋ ㄒㄧ ㄍㄨㄚ ㄐㄧㄡˋ ㄒㄧㄥˇ ˙ㄌㄜ",
 "爸爸很生氣": "ㄅㄚˋ ˙ㄅㄚ ㄏㄣˇ ㄕㄥ ㄑㄧˋ",
 "小狗不見了": "ㄒㄧㄠˇ ㄍㄡˇ ㄅㄨˋ ㄐㄧㄢˋ ˙ㄌㄜ",
 "西瓜不好吃": "ㄒㄧ ㄍㄨㄚ ㄅㄨˋ ㄏㄠˇ ㄔ",
@@ -1161,7 +1210,7 @@ const ZY = {
 "待在室內，不要站在大樹下": "ㄉㄞ ㄗㄞˋ ㄕˋ ㄋㄟˋ ㄅㄨˋ ㄧㄠˋ ㄓㄢˋ ㄗㄞˋ ㄉㄚˋ ㄕㄨˋ ㄒㄧㄚˋ",
 "站到大樹下躲雨": "ㄓㄢˋ ㄉㄠˋ ㄉㄚˋ ㄕㄨˋ ㄒㄧㄚˋ ㄉㄨㄛˇ ㄩˇ",
 "到空地上跑步": "ㄉㄠˋ ㄎㄨㄥˋ ㄉㄧˋ ㄕㄤˋ ㄆㄠˇ ㄅㄨˋ",
-"拿著雨傘到處走": "ㄋㄚˊ ㄓㄨㄛˊ ㄩˇ ㄙㄢˇ ㄉㄠˋ ㄔㄨˋ ㄗㄡˇ",
+"拿著雨傘到處走": "ㄋㄚˊ ˙ㄓㄜ ㄩˇ ㄙㄢˇ ㄉㄠˋ ㄔㄨˋ ㄗㄡˇ",
 "打雷時要待在室內，不要站在大樹下。": "ㄉㄚˇ ㄌㄟˊ ㄕˊ ㄧㄠˋ ㄉㄞ ㄗㄞˋ ㄕˋ ㄋㄟˋ ㄅㄨˋ ㄧㄠˋ ㄓㄢˋ ㄗㄞˋ ㄉㄚˋ ㄕㄨˋ ㄒㄧㄚˋ",
 "為什麼會先看到閃電，再聽到雷聲？": "ㄨㄟˋ ㄕㄣˊ ˙ㄇㄜ ㄏㄨㄟˋ ㄒㄧㄢ ㄎㄢˋ ㄉㄠˋ ㄕㄢˇ ㄉㄧㄢˋ ㄗㄞˋ ㄊㄧㄥ ㄉㄠˋ ㄌㄟˊ ㄕㄥ",
 "光跑得比聲音快": "ㄍㄨㄤ ㄆㄠˇ ˙ㄉㄜ ㄅㄧˇ ㄕㄥ ㄧㄣ ㄎㄨㄞˋ",
@@ -1169,7 +1218,7 @@ const ZY = {
 "雷聲在路上休息": "ㄌㄟˊ ㄕㄥ ㄗㄞˋ ㄌㄨˋ ㄕㄤˋ ㄒㄧㄡ ㄒㄧˊ",
 "妹妹的耳朵壞了": "ㄇㄟˋ ˙ㄇㄟ ˙ㄉㄜ ㄦˇ ˙ㄉㄨㄛ ㄏㄨㄞˋ ˙ㄌㄜ",
 "閃電和雷聲同時發生，但光跑得比聲音快很多。": "ㄕㄢˇ ㄉㄧㄢˋ ㄏㄜˊ ㄌㄟˊ ㄕㄥ ㄊㄨㄥˊ ㄕˊ ㄈㄚ ㄕㄥ ㄉㄢˋ ㄍㄨㄤ ㄆㄠˇ ˙ㄉㄜ ㄅㄧˇ ㄕㄥ ㄧㄣ ㄎㄨㄞˋ ㄏㄣˇ ㄉㄨㄛ",
-"看到閃電後，數到十才聽到雷聲；和數到三就聽到相比，這次的閃電——": "ㄎㄢˋ ㄉㄠˋ ㄕㄢˇ ㄉㄧㄢˋ ㄏㄡˋ ㄕㄨˇ ㄉㄠˋ ㄕˊ ㄘㄞˊ ㄊㄧㄥ ㄉㄠˋ ㄌㄟˊ ㄕㄥ ㄏㄜˊ ㄕㄨˋ ㄉㄠˋ ㄙㄢ ㄐㄧㄡˋ ㄊㄧㄥ ㄉㄠˋ ㄒㄧㄤ ㄅㄧˇ ㄓㄜˋ ㄘˋ ˙ㄉㄜ ㄕㄢˇ ㄉㄧㄢˋ",
+"看到閃電後，數到十才聽到雷聲；和數到三就聽到相比，這次的閃電——": "ㄎㄢˋ ㄉㄠˋ ㄕㄢˇ ㄉㄧㄢˋ ㄏㄡˋ ㄕㄨˇ ㄉㄠˋ ㄕˊ ㄘㄞˊ ㄊㄧㄥ ㄉㄠˋ ㄌㄟˊ ㄕㄥ ㄏㄜˊ ㄕㄨˇ ㄉㄠˋ ㄙㄢ ㄐㄧㄡˋ ㄊㄧㄥ ㄉㄠˋ ㄒㄧㄤ ㄅㄧˇ ㄓㄜˋ ㄘˋ ˙ㄉㄜ ㄕㄢˇ ㄉㄧㄢˋ",
 "離我們比較遠": "ㄌㄧˊ ㄨㄛˇ ˙ㄇㄣ ㄅㄧˇ ㄐㄧㄠˋ ㄩㄢˇ",
 "離我們比較近": "ㄌㄧˊ ㄨㄛˇ ˙ㄇㄣ ㄅㄧˇ ㄐㄧㄠˋ ㄐㄧㄣˋ",
 "一樣遠": "ㄧ ㄧㄤˋ ㄩㄢˇ",
@@ -1345,7 +1394,7 @@ const ZY = {
 "麵包": "ㄇㄧㄢˋ ㄅㄠ",
 "媽媽請我到雜貨店買一瓶醬油。": "ㄇㄚ ˙ㄇㄚ ㄑㄧㄥˇ ㄨㄛˇ ㄉㄠˋ ㄗㄚˊ ㄏㄨㄛˋ ㄉㄧㄢˋ ㄇㄞˇ ㄧ ㄆㄧㄥˊ ㄐㄧㄤˋ ㄧㄡˊ",
 "「我」一邊走一邊念「醬油」，是為了什麼？": "ㄨㄛˇ ㄧ ㄅㄧㄢ ㄗㄡˇ ㄧ ㄅㄧㄢ ㄋㄧㄢˋ ㄐㄧㄤˋ ㄧㄡˊ ㄕˋ ㄨㄟˋ ˙ㄌㄜ ㄕㄣˊ ˙ㄇㄜ",
-"怕忘記要買什麼": "ㄆㄚˋ ㄨㄤˋ ㄐㄧˋ ㄧㄠ ㄇㄞˇ ㄕㄣˊ ˙ㄇㄜ",
+"怕忘記要買什麼": "ㄆㄚˋ ㄨㄤˋ ㄐㄧˋ ㄧㄠˋ ㄇㄞˇ ㄕㄣˊ ˙ㄇㄜ",
 "很喜歡醬油": "ㄏㄣˇ ㄒㄧˇ ㄏㄨㄢ ㄐㄧㄤˋ ㄧㄡˊ",
 "在唱歌給自己聽": "ㄗㄞˋ ㄔㄤˋ ㄍㄜ ㄍㄟˇ ㄗˋ ㄐㄧˇ ㄊㄧㄥ",
 "想讓路人聽到": "ㄒㄧㄤˇ ㄖㄤˋ ㄌㄨˋ ㄖㄣˊ ㄊㄧㄥ ㄉㄠˋ",
@@ -1384,6 +1433,7 @@ const ZY = {
 "篇文章": "ㄆㄧㄢ ㄨㄣˊ ㄓㄤ",
 "歡迎來到閱讀素養！": "ㄏㄨㄢ ㄧㄥˊ ㄌㄞˊ ㄉㄠˋ ㄩㄝˋ ㄉㄨˊ ㄙㄨˋ ㄧㄤˇ",
 "你現在幾年級？": "ㄋㄧˇ ㄒㄧㄢˋ ㄗㄞˋ ㄐㄧˇ ㄋㄧㄢˊ ㄐㄧˊ",
+"回首頁": "ㄏㄨㄟˊ ㄕㄡˇ ㄧㄝˋ",
 "隨機挑一篇文章": "ㄙㄨㄟˊ ㄐㄧ ㄊㄧㄠ ㄧ ㄆㄧㄢ ㄨㄣˊ ㄓㄤ",
 "還沒讀過": "ㄏㄞˊ ㄇㄟˊ ㄉㄨˊ ㄍㄨㄛˋ",
 "讀": "ㄉㄨˊ",
@@ -1410,7 +1460,11 @@ const ZY = {
 "這次查過的生詞": "ㄓㄜˋ ㄘˋ ㄔㄚˊ ㄍㄨㄛˋ ˙ㄉㄜ ㄕㄥ ㄘˊ",
 "這次沒有查生詞。不確定意思的詞，下次可以點點看喔！": "ㄓㄜˋ ㄘˋ ㄇㄟˊ ㄧㄡˇ ㄔㄚˊ ㄕㄥ ㄘˊ ㄅㄨˋ ㄑㄩㄝˋ ㄉㄧㄥˋ ㄧˋ ˙ㄙ ˙ㄉㄜ ㄘˊ ㄒㄧㄚˋ ㄘˋ ㄎㄜˇ ㄧˇ ㄉㄧㄢˇ ㄉㄧㄢˇ ㄎㄢˋ ㄛ",
 "再讀一次": "ㄗㄞˋ ㄉㄨˊ ㄧ ㄘˋ",
-"下一篇": "ㄒㄧㄚˋ ㄧ ㄆㄧㄢ"
+"下一篇": "ㄒㄧㄚˋ ㄧ ㄆㄧㄢ",
+"這一輪還沒做完": "ㄓㄜˋ ㄧ ㄌㄨㄣˊ ㄏㄞˊ ㄇㄟˊ ㄗㄨㄛˋ ㄨㄢˊ",
+"確定要離開嗎？": "ㄑㄩㄝˋ ㄉㄧㄥˋ ㄧㄠˋ ㄌㄧˊ ㄎㄞ ˙ㄇㄚ",
+"繼續玩": "ㄐㄧˋ ㄒㄩˋ ㄨㄢˊ",
+"離開": "ㄌㄧˊ ㄎㄞ"
 };
 
 // 小夥伴：跟一年級數學「123冒險島」一樣的手繪像素小動物（18×15，臉朝左）
@@ -2095,7 +2149,7 @@ function catView(cid){
   R = null; if (SCENE) SCENE.alive = false; tipHide();
   const c = CAT[cid], as = catArts(S.lv, cid);
   $('view').innerHTML = `<div class="wrap" style="--c:${c.c}">
-    <div class="row" style="justify-content:space-between"><h2 class="cath"><canvas data-ic="${c.icon}" width="20" height="20" aria-hidden="true"></canvas>Lv${S.lv}・${Z(c.name)}</h2><button class="btn alt" id="back">◀ 回主畫面</button></div>
+    <div class="row" style="justify-content:space-between"><h2 class="cath"><canvas data-ic="${c.icon}" width="20" height="20" aria-hidden="true"></canvas>Lv${S.lv}・${Z(c.name)}</h2><button class="btn alt" id="back">◀ ${Z('回首頁')}</button></div>
     <button class="mixbtn" data-rand="${cid}" style="background:linear-gradient(90deg,${c.c},var(--gold))">🎲 ${Z('隨機挑一篇文章')}</button>
     <div class="units">${as.map(a => { const st = S.arts[a.id] || {}; return `
       <button class="unit" data-art="${a.id}" style="--c:${c.c}">
@@ -2289,7 +2343,7 @@ function wordbook(){
   R = null; if (SCENE) SCENE.alive = false; tipHide();
   const ws = Object.entries(S.words || {});
   $('view').innerHTML = `<div class="wrap dex">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">📒 生詞本 <span style="font-family:var(--px);font-size:12px;color:var(--gold)">${ws.length}</span></h2><button class="btn alt" id="back">◀ 回主畫面</button></div>
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">📒 生詞本 <span style="font-family:var(--px);font-size:12px;color:var(--gold)">${ws.length}</span></h2><button class="btn alt" id="back">◀ 回首頁</button></div>
     <p class="tipline" style="text-align:left">讀文章時查過的字詞，都會收進生詞本，可以隨時回來複習。</p>
     ${ws.length ? `<div class="cards">${ws.map(([w, o]) => `<div class="card" style="--c:var(--cyan)"><div><b>${esc(w)}</b>${esc(o.m)}<div class="from">出自《${esc(o.from)}》</div></div></div>`).join('')}</div>` : '<p class="tipline">還沒有查過生詞。讀文章時，點一下有底線的字詞就會收進來喔！</p>'}
   </div>`;
@@ -2366,7 +2420,10 @@ addEventListener('keydown', e => {
   if (R && R.phase === 'quiz' && !R.done && /^[1-4]$/.test(e.key)){ const b = $('quiz').querySelectorAll('[data-a]')[+e.key - 1]; if (b) b.click(); }
   if (R && R.phase === 'quiz' && R.done && e.key === 'Enter' && $('next')){ e.preventDefault(); $('next').click(); }
 });
-$('btnHome').onclick = () => { if ($('modal').dataset.lock) return; audio(); closeModal(); home(); };
+// 上方「首頁」：回閱讀素養的首頁；答題中按「首頁」或「遊戲大廳」會先問一下（Lv1、Lv2 問的話有注音）
+EDULAB_NAV.home = () => { if ($('modal').dataset.lock) return; audio(); closeModal(); home(); };
+EDULAB_NAV.busy = () => !!(R && R.phase === 'quiz');
+EDULAB_NAV.text = () => useZy() && !S.zyOff ? { title:ZF('這一輪還沒做完'), sub:ZF('確定要離開嗎？'), stay:ZF('繼續玩'), go:ZF('離開') } : null;
 $('btnWords').onclick = () => { if ($('modal').dataset.lock) return; audio(); closeModal(); wordbook(); };
 $('btnRank').onclick = () => { if ($('modal').dataset.lock) return; audio(); showBoard('stars', S.lv); };
 $('btnHelp').onclick = () => { if ($('modal').dataset.lock) return; audio(); help(); };
