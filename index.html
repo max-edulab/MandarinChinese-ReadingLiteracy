@@ -244,21 +244,40 @@ button{font:inherit;color:inherit;cursor:pointer}
 /* ---------- 注音（Lv1、Lv2）：國字右邊直式注音，聲調在右上，輕聲點在最上面 ---------- */
 .ru{display:inline-flex;align-items:center;vertical-align:middle;margin:0 .02em}
 .ru .hz{display:block;line-height:1.15}
-.sy{display:inline-flex;align-items:flex-end;margin-left:.08em;padding-right:.34em;line-height:1;font-size:max(.46em,10px);font-weight:700;font-family:var(--f);text-shadow:none}
+.sy{display:inline-flex;align-items:center;margin-left:.06em;padding-right:.3em;line-height:1;font-size:.3em;font-weight:700;font-family:var(--f);text-shadow:none}
 .sy .col{display:inline-flex;flex-direction:column;align-items:center}
-.sy .zl{position:relative;display:block;font-weight:700;line-height:1.05;font-family:var(--f);color:inherit}
+.sy .zl{position:relative;display:block;font-weight:700;line-height:1.02;font-family:var(--f);color:inherit}
 .sy .dot,.sy .tn{font-family:var(--f);color:inherit}
-.sy .dot{display:block;font-style:normal;line-height:.6}
+.sy .dot{display:block;font-style:normal;line-height:.5}
 .sy .tn{position:absolute;left:100%;top:-.12em;margin-left:.02em;font-style:normal;font-size:.85em;line-height:1}
 .sy.m .tn{top:-.5em}
 body.no-zy .sy{display:none}
-.art.zyart{font-size:24px;line-height:2.1}
+.art.zyart{font-size:30px;line-height:1.9}
 .art.zyart p{text-indent:0}
-.rdgrid.split .art.zyart{font-size:19px}
-.gtip.zytip{font-size:18px}
-.gtip.zytip b{font-size:20px}
+.rdgrid.split .art.zyart{font-size:24px}
 #btnZy[aria-pressed="false"]{opacity:.55}
-@media (max-width:760px){.art.zyart{font-size:21px}}
+@media (max-width:760px){.art.zyart{font-size:26px}.rdgrid.split .art.zyart{font-size:22px}}
+/* 有注音的畫面：國字放大，注音（國字的 0.3 倍）才看得清楚 */
+body.zyon .bubble .q{font-size:26px;line-height:1.5}
+body.zyon .opt{font-size:24px}
+body.zyon .tf .opt{font-size:26px}
+body.zyon .fb .h{font-size:22px}
+body.zyon .fb .x,body.zyon .fb .ref{font-size:20px}
+body.zyon .btn{font-size:21px}
+body.zyon .bubble .tag{font-size:16px}
+body.zyon .hintnote{font-size:17px}
+body.zyon .hud .uname{font-size:20px}
+body.zyon .unit h3{font-size:24px}
+body.zyon .unit .sub{font-size:18px}
+body.zyon .hero .txt p{font-size:18px}
+body.zyon .chipq{font-size:20px}
+body.zyon .review{font-size:18px}
+body.zyon .sk b{font-size:18px}
+.help.grade h3,.help.grade p{font-size:22px}
+.gradepick .btn{font-size:24px}
+.gtip.zytip{font-size:22px}
+.gtip.zytip b{font-size:26px}
+.nb{white-space:nowrap}
 /* ---------- 知識卡圖鑑 ---------- */
 .dex h3{margin:6px 0;font-size:17px;color:var(--c)}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:10px}
@@ -1958,6 +1977,7 @@ function confetti(){
 
 // ---------- 注音：Lv1、Lv2 的文字每個國字旁邊都有直式注音（和一年級遊戲同一種排法） ----------
 // 注音資料 ZY 是事先查教育部國語辭典產生的：{ 原文: '每個國字的注音，用空白分開' }
+const NOSTART = '，。、；：！？」』）…—';
 const HAN = /[㐀-鿿豈-﫿]/;
 // 一個字的直式注音：輕聲點在最上面，聲調在最後一個符號的右上方（注音符號用 span，不會被其他 b 的樣式影響）
 function ruby(ch, s){
@@ -1971,7 +1991,14 @@ function zyToks(text, force = false){
   const chars = [...String(text)], sy = (force || useZy()) && ZY[text];
   if (!sy) return chars.map(esc);
   const syl = sy.split(' '); let k = 0;
-  return chars.map(c => HAN.test(c) && syl[k] ? ruby(c, syl[k++]) : esc(c));
+  // 句號、逗號、引號的後半等不放在行首：把它併進前一個字，包成不會斷開的一組（那一格留空，字的位置編號不變）
+  const out = [], grp = new Set();
+  chars.forEach(c => {
+    if (HAN.test(c) && syl[k]){ out.push(ruby(c, syl[k++])); return; }
+    if (NOSTART.includes(c)){ let j = out.length - 1; while (j >= 0 && out[j] === '') j--; if (j >= 0){ out[j] += esc(c); grp.add(j); out.push(''); return; } }
+    out.push(esc(c));
+  });
+  return out.map((t, i) => grp.has(i) ? `<span class="nb">${t}</span>` : t);
 }
 const Z = text => zyToks(text).join('');              // 依目前的等級決定要不要加注音
 const ZF = text => zyToks(text, true).join('');       // 一定加注音（例如第一次打開時問年級）
@@ -1986,6 +2013,7 @@ function syncZyBtn(){
   const b = $('btnZy'); if (!b) return;
   b.hidden = !useZy(); b.setAttribute('aria-pressed', String(!S.zyOff));
   document.body.classList.toggle('no-zy', !!S.zyOff);
+  document.body.classList.toggle('zyon', useZy() && !S.zyOff);   // 有注音的畫面字放大一點
 }
 // 每篇文章加上分類資料
 const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
